@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>drag the pig</title>
+	<meta charset=UTF-8>
+
+	<!-- ====================================================================================================== -->
+	<!--                                                                                                        -->
+	<!-- http://www.adobe.com/content/dam/Adobe/en/devnet/acrobat/pdfs/pdf_open_parameters.pdf                  -->
+	<!--                                                                                                        -->
+	<!-- https://social.technet.microsoft.com/Forums/ie/en-US/286b1cc5-08df-47e1-9702-ee56a06cbf8e/             -->
+	<!-- pop-up-submission-form-not-showing                                                                     -->
+	<!--                                                                                                        -->
+	<!-- https://connect.microsoft.com/IE/feedback/details/724340/pdf-is-showing-always-on-top-of-all-controls  -->
+	<!--                                                                                                        -->
+	<!-- ====================================================================================================== -->
+
+	<style type=text/css>
+
+		html,body,#viewport,#preload,#div { margin:0; padding:0; border:0 }
+		#viewport,#preload { width:100%;height:100% }	/*(for F12-IE5mode)*/ 
+		#viewport,#preload { position:absolute; top:0;right:0;bottom:0;left:0; min-width:500px;min-height:500px; visibility:hidden; z-index:0 }
+		#preload { z-index:-1 }
+		#obj { position:absolute; z-index:1 }
+		.img { position:absolute; z-index:2 }
+
+		.bodycolor { background-color:lavender }
+		#div { color:firebrick; text-align:center; overflow:hidden }
+		.nodisplay { display:none }
+		.noborder  { border:none }
+
+	</style>
+
+	<script>
+		onload= function(){
+
+			(window.img= IMG).id= 'img'		//ie8
+
+			if (window.item && ((location.protocol=='file:') || (location.search.toUpperCase()=="?IFRAME-FOR-IE")) ){
+
+				document.body.className= "bodycolor"
+
+				while (div.offsetHeight<obj.offsetHeight) div.appendChild(document.createElement("p")).appendChild(document.createTextNode("text under <OBJECT>"))
+				div.style.height= obj.height+"px"
+				div.style.width=  obj.width +"px"
+
+				window.imgiframeforIE= document.getElementById("imgiframeforIE")
+				imgiframeforIE.width=  img.width
+				imgiframeforIE.height= img.height
+				imgiframeforIE.className= "img noborder"
+
+				if (!Date.now || !document.styleSheets[0].ownerNode){			//ie8 or F12-ie8-mode.  (F12 fails to emulate that ie8 has no Date.now)
+					var c= imgiframeforIE.cloneNode(true)
+					c.frameBorder=0
+					viewport.replaceChild(c,imgiframeforIE)
+					imgiframeforIE=c
+				}
+
+				if (!('readyState' in imgiframeforIE))
+					imgiframeforIE.onload= function(){
+						this.readyState='complete'
+						if (this.onreadystatechange) this.onreadystatechange()
+					}
+				imgiframeforIE.src= "DRAG-THE-PIG--iframe.html"				// postponed src url til here to avoid unnecessary loading of <iframe src=iframe.html>
+
+				viewport.removeChild(img)
+				window.img= imgiframeforIE
+
+				img.style.visibility= "hidden"
+				setTimeout(function(){img.style.visibility=""},0)
+			}
+
+			var list= [	['images/pig.png'],
+					['images/bunny.png'],
+					['images/duck.png'],
+					['images/eggs-basket.png'],
+					['images/egg.png'],
+					['images/rooster.png'],
+					['images/chicken.png'],
+					['images/roast-chicken.png'],
+					['images/cow.png'],
+					['images/t-bone.png'],
+					['images/steak.png'],
+					['images/burger.png'],
+					['images/hippo.png'],
+					['images/frog.png'],
+					['images/mushroom.png'],
+					['images/cheese.png'],
+					['images/corn.png'],
+					['images/muffin.png'],
+					['images/cone3.png'],
+					['images/pineapple.png'],
+					['images/grapes.png'],
+					['images/concord.png'],
+					['images/acorn.png'],
+					['images/tea-kettle.png'] ]
+			list.n= 0
+
+			if (img.tagName.toLowerCase()=='img'){					// this is rewritten to preload (and pre-render?) each img element and retain it in the list
+												// instead of simply setting  img.src= new url  (fetch image on-demand) at the time of each click ...>>>
+				list[0][1]= img
+
+				function fetch(n){
+					list[n][1]= document.createElement("img")
+					list[n][1].src= list[n][0]
+					preload.appendChild(list[n][1])
+					list[n][1].onload= function(){}				// IE10  without some/any function here, never gets past .readyState=='loading'
+				}
+				fetch(1)
+
+				img.onclick= function(evt){
+													//TEST  cycle thru the list once (click each image in sequence)
+					if ((evt||window.event).ctrlKey||(evt||event).altKey){		//TEST  then CTRL+CLICK or ALT+CLICK the image
+						var x=[]						//TEST  to open an alertbox with all the images' canvas delay times
+						for (var i=0;i<list.length;i++) x.push(list[i][2])	//TEST  the first-time pass gives a few ms for each
+						alert(x.join(","))					//TEST  thereafter, IE and Chrome give 0 ms for each
+						return false						//TEST  CHROME   actually, sometimes a few might take say 15 ms while rest are 0 ms.  hmm.
+					}								//TEST  FIREFOX  wait 2 minutes, then cycle them all again. all take 20-30 ms each.  yikes.
+													//TEST  that's why the white flash is visible, and that's what the dummy canvas read fixes
+					var n= list.n
+					list[n][1].onload= null					
+					n= list.n= (n+1)%list.length
+					var i= list[n][1]
+					i.onload= function(){
+						i.onload= null
+						if (window.CanvasRenderingContext2D){			// the very first time a new image is displayed, there is sometimes a brief white flash  (ugly,distracting)
+							list[n][2]= +new Date()				//TEST
+							var canvas= document.createElement("canvas")	//     1) the old image is removed from the screen
+							var context= canvas.getContext('2d')		//     2) the new png data is decoded/expanded to a bitmap file
+							canvas.width=  i.width				//     3) the new image is displayed
+							canvas.height= i.height				//
+							if (canvas.width && canvas.height)		// this dummy canvas read eliminates the delay at step (2)
+								context.drawImage(i,0,0)		// firefox does "something" to the bitmap after one or two minutes (so it always needs to be refreshed to avoid flash)
+							list[n][2]= new Date() - list[n][2]		//TEST
+						}							//
+						i.style.top=  img.style.top
+						i.style.left= img.style.left
+						img.parentNode.replaceChild(i,img)		//...>>> finally, now prepared to replaceChild glitch-free
+						img= i
+						onresize()
+					}
+					if (!i.className){
+						i.className= "img"
+						i.onclick=    img.onclick
+						i.ondblclick= img.ondblclick			//ie8
+						i.ondragstart= img.ondragstart
+						i.ondragend=   img.ondragend
+						if (n<(list.length-1)) fetch(n+1)
+					}
+					if (i.complete) i.onload()				//...>>> first-time images will (probably) be .complete now, because preloaded
+				}
+				if (window.item && !document.styleSheets[0].ownerNode)		//ie8
+					img.ondblclick= img.onclick				//ie8
+			}else{
+				function setupIframe(){
+
+					var imgdoc= img.contentDocument || img.contentWindow.document		// IE8+ || IE7
+					var iimg= imgdoc.images[0]
+
+					list[0][1]= iimg
+					list[1][1]= imgdoc.createElement("img")
+					list[1][1].src= list[1][0]
+
+					imgdoc.documentElement.onclick= function(){
+
+						var n= list.n
+						if (list[n][1].onload) imgdoc.body.removeChild(list[n][1])	// is this pointless to do?
+						list[n][1].onload= null
+
+						n= list.n= (n+1)%list.length
+						var i= list[n][1]
+
+						i.style.marginTop= i.style.marginLeft= "-1000px"
+						imgdoc.body.appendChild(i)
+
+						i.onload= function(){
+							this.onload= null
+							iimg.parentNode.replaceChild(this,iimg)
+							iimg= this
+							this.style.marginTop= this.style.marginLeft= 0
+							img.width=  this.width
+							img.height= this.height
+							onresize()
+						}
+						if ((n<(list.length-1)) && !list[n+1][1]){
+							list[n+1][1]= imgdoc.createElement("img")
+							list[n+1][1].src= list[n+1][0]
+						}
+						if (i.complete) i.onload()
+					}
+					if (window.item && !document.styleSheets[0].ownerNode)				//ie8
+						imgdoc.documentElement.ondblclick= imgdoc.documentElement.onclick	//ie8
+				}
+				if (img.readyState!='complete')
+					img.onreadystatechange= function(){
+						if (img.readyState=='complete'){
+							img.onreadystatechange=null
+							setupIframe()
+						}
+					}
+				else	setupIframe()
+			}
+
+			onresize= function(){
+
+				if ((img.offsetTop+img.offsetHeight)>viewport.clientHeight) img.style.top= viewport.clientHeight-img.offsetHeight +"px"
+				if ((img.offsetLeft+img.offsetWidth)>viewport.clientWidth)  img.style.left= viewport.clientWidth-img.offsetWidth + "px"
+
+				img.style.display="none"
+				var top= (viewport.offsetHeight-obj.offsetHeight)/2
+				if (top<0) top=0
+				var left= (viewport.offsetWidth-obj.offsetWidth)/2
+				if (left<0) left=0
+				obj.style.top=  top+ "px"
+				obj.style.left= left+"px"
+				img.style.display=""
+
+				div.style.marginTop=  obj.style.top
+				div.style.marginLeft= obj.style.left
+			}
+			onresize()
+
+			img.style.top=  obj.offsetTop + obj.offsetHeight - img.offsetHeight/2 +"px"
+			img.style.left= obj.offsetLeft -  (img.offsetWidth-obj.offsetWidth)/2 +"px"
+			viewport.style.visibility= "visible"
+
+
+			var coords= {}
+
+			img.ondragstart= function(evt){
+
+				evt= evt||window.event
+
+				coords.mousestartX= evt.screenX
+				coords.mousestartY= evt.screenY
+				coords.imgTop=  img.offsetTop
+				coords.imgLeft= img.offsetLeft
+
+				var dt= evt.dataTransfer									//
+				dt.clearData()											//
+				//dt.effectAllowed='all'									//
+				//dt.dropEffect='move'										//
+				dt.setData( 'text', /*'hello'*/ "" )								// firefox needs to drag "something", else drag won't commence
+			}
+
+			img.ondragend= function(evt){										// firefox and chrome both require screenX coords.
+																// clientX/pageX values incorrect here in dragend.
+				evt= evt||window.event
+
+				var distX= coords.imgLeft+ evt.screenX-coords.mousestartX
+				if (distX<0) distX=0
+				if ((distX+img.offsetWidth)>viewport.clientWidth) distX= viewport.clientWidth-img.offsetWidth
+
+				var distY= coords.imgTop+ evt.screenY-coords.mousestartY
+				if (distY<0) distY=0
+				if ((distY+img.offsetHeight)>viewport.clientHeight) distY= viewport.clientHeight-img.offsetHeight
+
+				img.style.top=  distY+"px"
+				img.style.left= distX+"px"
+			}
+
+			viewport.ondragleave=											// chrome needs this, else clears pdf to frowny when dragging over and past.
+			viewport.ondrop=											// firefox needs this, else opens new page with url=hello - from dataTransfer.setData(text,hello)
+			viewport.ondragenter=
+			viewport.ondragover= function(evt){
+						try{ evt.preventDefault(); evt.stopPropagation() }catch(e){}
+						return false
+			}
+		}
+	</script>
+</head>
+<body>
+	<div id=preload></div>
+	<div id=viewport>
+
+		<!--( for iframe transparency test. IE sees straight-thru OBJECT. )-->
+		<div id=div></div>
+
+		<object id=obj data="images/AcroRd-240x234.pdf#page=1&amp;view=Fit&amp;scrollbar=0&amp;toolbar=0&amp;statusbar=0&amp;messages=0&amp;navpanes=0" type=application/pdf width=240 height=234 draggable=false>
+		</object>
+
+<!--		<img id=img class=img src=images/pig.png alt=pig draggable=true>	-->
+		<img id=IMG class=img src=images/pig.png alt=pig draggable=true>	<!-- IE8 holy mackerel -->
+
+		<iframe id=imgiframeforIE class=nodisplay draggable=true></iframe>
+	</div>
+</body>
+</html>
